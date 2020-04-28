@@ -3,3 +3,5 @@
 refs/
 venv/
 logs/
+runs/
+figs/

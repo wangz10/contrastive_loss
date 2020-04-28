@@ -10,7 +10,7 @@ def pdist_euclidean(A):
     # turn r into column vector
     r = tf.reshape(r, [-1, 1])
     D = r - 2*tf.matmul(A, tf.transpose(A)) + tf.transpose(r)
-    return D
+    return tf.sqrt(D)
 
 
 def square_to_vec(D):
@@ -37,4 +37,14 @@ def get_contrast_batch_labels(y):
 
 
 def get_contrast_batch_labels_regression(y):
-    pass
+    '''
+    Make contrast labels for regression by taking all the pairwise in y
+    y: tensor with shape: (batch_size, )
+    returns:   
+        tensor with shape: (batch_size * (batch_size-1) // 2, )
+    '''
+    y_col_vec = tf.reshape(tf.cast(y, tf.float32), [-1, 1])
+    D_y = pdist_euclidean(y_col_vec)
+    d_y = square_to_vec(D_y)
+
+    return d_y
