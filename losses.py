@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 
 def pdist_euclidean(A):
@@ -43,11 +44,43 @@ def get_contrast_batch_labels_regression(y):
     returns:   
         tensor with shape: (batch_size * (batch_size-1) // 2, )
     '''
-    y_col_vec = tf.reshape(tf.cast(y, tf.float32), [-1, 1])
-    D_y = pdist_euclidean(y_col_vec)
-    d_y = square_to_vec(D_y)
+    raise NotImplementedError
 
-    return d_y
+
+def max_margin_contrastive_loss(z, y, margin=1.0, metric='euclidean'):
+    '''
+    Wrapper for the maximum margin contrastive loss (Hadsell et al. 2006)
+    `tfa.losses.contrastive_loss`
+    Args:
+        z: hidden vector of shape [bsz, n_features].
+        y: ground truth of shape [bsz].
+        metric: one of ('euclidean', 'cosine')
+    '''
+    # compute pair-wise distance matrix
+    if metric == 'euclidean':
+        D = pdist_euclidean(z)
+    elif metric == 'cosine':
+        D = 1 - tf.matmul(z, z, transpose_a=False, transpose_b=True)
+    # convert squareform matrix to vector form
+    d_vec = square_to_vec(D)
+    # make contrastive labels
+    y_contrasts = get_contrast_batch_labels(y)
+    loss = tfa.losses.contrastive_loss(y_contrasts, d_vec, margin=margin)
+    return loss
+
+
+def multiclass_npairs_loss(z, y):
+    '''
+    Wrapper for the multiclass N-pair loss (Sohn 2016)
+    `tfa.losses.npairs_loss`
+    Args:
+        z: hidden vector of shape [bsz, n_features].
+        y: ground truth of shape [bsz].
+    '''
+    # cosine similarity matrix
+    S = tf.matmul(z, z, transpose_a=False, transpose_b=True)
+    loss = tfa.losses.npairs_loss(y, S)
+    return loss
 
 
 def supervised_nt_xent_loss(z, y, temperature=0.5, base_temperature=0.07):
