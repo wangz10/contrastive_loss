@@ -119,10 +119,14 @@ def supervised_nt_xent_loss(z, y, temperature=0.5, base_temperature=0.07):
         tf.math.log(tf.reduce_sum(exp_logits, axis=1, keepdims=True))
 
     # compute mean of log-likelihood over positive
+    # this may introduce NaNs due to zero division,
+    # when a class only has one example in the batch
+    mask_sum = tf.reduce_sum(mask, axis=1)
     mean_log_prob_pos = tf.reduce_sum(
-        mask * log_prob, axis=1) / tf.reduce_sum(mask, axis=1)
+        mask * log_prob, axis=1)[mask_sum > 0] / mask_sum[mask_sum > 0]
 
     # loss
     loss = -(temperature / base_temperature) * mean_log_prob_pos
-    loss = tf.reduce_mean(tf.reshape(loss, [anchor_count, batch_size]))
+    # loss = tf.reduce_mean(tf.reshape(loss, [anchor_count, batch_size]))
+    loss = tf.reduce_mean(loss)
     return loss
