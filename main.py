@@ -97,6 +97,9 @@ def main():
     optimizer1 = tf.keras.optimizers.Adam(lr=args.lr_1)
     optimizer2 = tf.keras.optimizers.Adam(lr=args.lr_2)
 
+    model_name = '{}_model-bs_{}-lr_{}'.format(
+        args.loss, args.batch_size_1, args.lr_1)
+
     # 0. Load data
     if args.data == 'mnist':
         mnist = tf.keras.datasets.mnist
@@ -217,11 +220,11 @@ def main():
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        title = 'Data: {}; Embedding: {}'.format(
-            args.data, LOSS_NAMES[args.loss])
+        title = 'Data: {}; Embedding: {}\nbatch size: {}; LR: {}'.format(
+            args.data, LOSS_NAMES[args.loss], args.batch_size_1, args.lr_1)
         ax.set_title(title)
         fig.savefig(
-            'figs/PCA_plot_{}_{}_embed.png'.format(args.data, args.loss))
+            'figs/PCA_plot_{}_{}_embed.png'.format(args.data, model_name))
 
         # density plot for PCA
         g = sns.jointplot('PC1', 'PC2', data=x_te_proj_pca_df,
@@ -231,7 +234,7 @@ def main():
         g.fig.suptitle(title)
 
         g.savefig(
-            'figs/Joint_PCA_plot_{}_{}_embed.png'.format(args.data, args.loss))
+            'figs/Joint_PCA_plot_{}_{}_embed.png'.format(args.data, model_name))
 
     # Stage 2: freeze the learned representations and then learn a classifier
     # on a linear layer using a softmax loss
@@ -272,8 +275,6 @@ def main():
         t_loss = cce_loss_obj(y, y_preds)
         test_loss(t_loss)
         test_acc(y, y_preds)
-
-    model_name = '{}_model'.format(args.loss)
 
     if args.write_summary:
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
