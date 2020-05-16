@@ -25,6 +25,9 @@ LOSS_NAMES = {
     'max_margin': 'Max margin contrastive',
     'npairs': 'Multiclass N-pairs',
     'sup_nt_xent': 'Supervised NT-Xent',
+    'triplet-hard': 'Triplet hard',
+    'triplet-semihard': 'Triplet semihard',
+    'triplet-soft': 'Triplet soft'
 }
 
 
@@ -45,10 +48,12 @@ def parse_option():
                         )
     parser.add_argument('--epoch', type=int, default=20,
                         help='Number of epochs for training in stage1, the same number of epochs will be applied on stage2')
-
+    parser.add_argument('--optimizer', type=str, default='adam',
+                        help='Optimizer to use, choose from ("adam", "lars", "sgd")'
+                        )
     # loss functions
     parser.add_argument('--loss', type=str, default='max_margin',
-                        help='Loss function used for stage 1, choose from ("max_margin", "npairs", "sup_nt_xent")')
+                        help='Loss function used for stage 1, choose from ("max_margin", "npairs", "sup_nt_xent", "triplet-hard", "triplet-semihard", "triplet-soft")')
     parser.add_argument('--margin', type=float, default=1.0,
                         help='margin for tfa.losses.contrastive_loss. will only be used when --loss=max_margin')
     parser.add_argument('--metric', type=str, default='euclidean',
@@ -57,7 +62,6 @@ def parse_option():
                         help='temperature for sup_nt_xent loss. will only be used when --loss=sup_nt_xent')
     parser.add_argument('--base_temperature', type=float, default=0.07,
                         help='base_temperature for sup_nt_xent loss. will only be used when --loss=sup_nt_xent')
-
     # dataset params
     parser.add_argument('--data', type=str, default='mnist',
                         help='Dataset to choose from ("mnist", "fashion_mnist")'
@@ -94,7 +98,18 @@ def main():
     if args.loss not in LOSS_NAMES:
         raise ValueError('Unsupported loss function type {}'.format(args.loss))
 
-    optimizer1 = tf.keras.optimizers.Adam(lr=args.lr_1)
+    if args.optimizer == 'adam':
+        optimizer1 = tf.keras.optimizers.Adam(lr=args.lr_1)
+    elif args.optimizer == 'lars':
+        from lars_optimizer import LARSOptimizer
+        # not compatible with tf2
+        optimizer1 = LARSOptimizer(args.lr_1,
+                                   exclude_from_weight_decay=['batch_normalization', 'bias'])
+    elif args.optimizer == 'sgd':
+        optimizer1 = tfa.optimizers.SGDW(learning_rate=args.lr_1,
+                                         momentum=0.9,
+                                         weight_decay=1e-4
+                                         )
     optimizer2 = tf.keras.optimizers.Adam(lr=args.lr_2)
 
     model_name = '{}_model-bs_{}-lr_{}'.format(
@@ -144,12 +159,17 @@ def main():
     elif args.loss == 'sup_nt_xent':
         def loss_func(z, y): return losses.supervised_nt_xent_loss(
             z, y, temperature=args.temperature, base_temperature=args.base_temperature)
+    elif args.loss.startswith('triplet'):
+        triplet_kind = args.loss.split('-')[1]
+        def loss_func(z, y): return losses.triplet_loss(
+            z, y, kind=triplet_kind, margin=args.margin)
 
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     test_loss = tf.keras.metrics.Mean(name='test_loss')
 
+    # tf.config.experimental_run_functions_eagerly(True)
     @tf.function
-    # train step for the multiclass N-pair loss
+    # train step for the contrastive loss
     def train_step_stage1(x, y):
         '''
         x: data tensor, shape: (batch_size, data_dim)

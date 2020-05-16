@@ -66,7 +66,8 @@ def max_margin_contrastive_loss(z, y, margin=1.0, metric='euclidean'):
     # make contrastive labels
     y_contrasts = get_contrast_batch_labels(y)
     loss = tfa.losses.contrastive_loss(y_contrasts, d_vec, margin=margin)
-    return loss
+    # exploding/varnishing gradients on large batch?
+    return tf.reduce_mean(loss)
 
 
 def multiclass_npairs_loss(z, y):
@@ -80,6 +81,23 @@ def multiclass_npairs_loss(z, y):
     # cosine similarity matrix
     S = tf.matmul(z, z, transpose_a=False, transpose_b=True)
     loss = tfa.losses.npairs_loss(y, S)
+    return loss
+
+
+def triplet_loss(z, y, margin=1.0, kind='hard'):
+    '''
+    Wrapper for the triplet losses 
+    `tfa.losses.triplet_hard_loss` and `tfa.losses.triplet_semihard_loss`
+    Args:
+        z: hidden vector of shape [bsz, n_features], assumes it is l2-normalized.
+        y: ground truth of shape [bsz].    
+    '''
+    if kind == 'hard':
+        loss = tfa.losses.triplet_hard_loss(y, z, margin=margin, soft=False)
+    elif kind == 'soft':
+        loss = tfa.losses.triplet_hard_loss(y, z, margin=margin, soft=True)
+    elif kind == 'semihard':
+        loss = tfa.losses.triplet_semihard_loss(y, z, margin=margin)
     return loss
 
 
