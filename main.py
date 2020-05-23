@@ -240,7 +240,7 @@ def main():
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        title = 'Data: {}; Embedding: {}\nbatch size: {}; LR: {}'.format(
+        title = 'Data: {}\nEmbedding: {}\nbatch size: {}; LR: {}'.format(
             args.data, LOSS_NAMES[args.loss], args.batch_size_1, args.lr_1)
         ax.set_title(title)
         fig.savefig(

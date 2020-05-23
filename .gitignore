@@ -5,3 +5,5 @@ venv/
 logs/
 runs/
 figs/
+img/
+.DS_Store
