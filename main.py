@@ -141,7 +141,7 @@ def main():
         (x_train, y_train)).shuffle(5000).batch(args.batch_size_1)
 
     train_ds2 = tf.data.Dataset.from_tensor_slices(
-        (x_train, y_train)).shuffle(5000).batch(args.batch_size_1)
+        (x_train, y_train)).shuffle(5000).batch(args.batch_size_2)
 
     test_ds = tf.data.Dataset.from_tensor_slices(
         (x_test, y_test)).batch(args.batch_size_1)
